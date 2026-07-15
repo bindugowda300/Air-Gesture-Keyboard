@@ -1,14 +1,48 @@
-# Wearable Air Gesture Keyboard
+import serial
+import pyautogui
+import time
 
-A wearable hardware-based device that allows users to type characters and control computer interfaces in mid-air through hand gestures.
+# Configure the serial port connected to your hardware (Bluetooth or USB)
+# Change 'COM3' to your hardware's active COM port on Windows
+SERIAL_PORT = 'COM3' 
+BAUD_RATE = 9600
 
-## 🛠️ Hardware Components
-* **Microcontroller:** Arduino Leonardo (or ATMega32U4 based board for native USB keyboard emulation)
-* **Inertial Measurement Unit (IMU):** MPU6050 Gyroscope/Accelerometer (to track hand tilt and movement)
-* **Flex Sensors:** Placed on fingers to detect individual finger bending/triggering
-* **Connection:** USB Interface / Bluetooth Module (HC-05)
+try:
+    ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
+    print(f"Connected to Air Gesture Hardware on {SERIAL_PORT}")
+except Exception as e:
+    print(f"Error connecting to serial port: {e}")
+    ser = None
 
-## 🚀 How it Works
-1. The MPU6050 detects raw angular and acceleration velocities when the hand moves or tilts.
-2. Flex sensors detect if specific fingers are bent.
-3. The Arduino parses these analog inputs, translates them into keypress values (e.g., Space, Backspace, or letters), and sends them as HID (Human Interface Device) keypresses to the computer.
+def process_gesture(data_line):
+    """
+    Decodes gesture data from the wearable hardware and emulates keypresses.
+    """
+    data = data_line.strip()
+    if not data:
+        return
+        
+    print(f"Hardware signal received: {data}")
+    
+    # Map signals to keyboard keypresses
+    if data == "INDEX_BENT":
+        pyautogui.write('A')
+    elif data == "THUMB_BENT":
+        pyautogui.write(' ')
+    elif data == "TILT_LEFT":
+        pyautogui.press('left')
+    elif data == "TILT_RIGHT":
+        pyautogui.press('right')
+
+if __name__ == "__main__":
+    if ser:
+        try:
+            print("Listening for gestures...")
+            while True:
+                if ser.in_waiting > 0:
+                    line = ser.readline().decode('utf-8', errors='ignore')
+                    process_gesture(line)
+                time.sleep(0.01)
+        except KeyboardInterrupt:
+            print("Program stopped.")
+            ser.close()
